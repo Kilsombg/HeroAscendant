@@ -1,6 +1,20 @@
 # Minimum CMake version required. 3.20 added better presets support.
 cmake_minimum_required(VERSION 3.20)
 
+# vcpkg integration — finds libraries installed by vcpkg.
+# CMAKE_TOOLCHAIN_FILE tells CMake how to find packages.
+# ENV{VCPKG_ROOT} reads the environment variable we set earlier.
+if(DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+    set(CMAKE_TOOLCHAIN_FILE
+        "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+        CACHE STRING "Vcpkg toolchain file")
+    message(STATUS "vcpkg toolchain: ${CMAKE_TOOLCHAIN_FILE}")
+else()
+    message(STATUS "CMAKE_TOOLCHAIN_FILE already set or VCPKG_ROOT not found")
+    message(STATUS "CMAKE_TOOLCHAIN_FILE = ${CMAKE_TOOLCHAIN_FILE}")
+    message(STATUS "VCPKG_ROOT = $ENV{VCPKG_ROOT}")
+endif()
+
 # Project name and version. VERSION is optional but good practice.
 project(HeroAscendant VERSION 0.1.0)
 
@@ -12,15 +26,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Disable compiler-specific extensions (e.g. GNU extensions).
 # This keeps your code strictly standard C++17, more portable.
 set(CMAKE_CXX_EXTENSIONS OFF)
-
-# vcpkg integration — finds libraries installed by vcpkg.
-# CMAKE_TOOLCHAIN_FILE tells CMake how to find packages.
-# ENV{VCPKG_ROOT} reads the environment variable we set earlier.
-if(DEFINED ENV{VCPKG_ROOT})
-    set(CMAKE_TOOLCHAIN_FILE
-        "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
-        CACHE STRING "")
-endif()
 
 # --- Find Libraries ---
 # find_package looks for a library installed by vcpkg.
