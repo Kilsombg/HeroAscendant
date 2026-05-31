@@ -1,0 +1,11 @@
+{
+    "cmake.configureOnOpen": true,
+    "cmake.buildDirectory": "${workspaceFolder}/build/windows-debug",
+    "cmake.generator": "Visual Studio 17 2022",
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+    "editor.formatOnSave": true,
+    "files.associations": {
+        "*.h": "cpp",
+        "CMakeLists.txt": "cmake"
+    }
+}

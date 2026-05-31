@@ -1,0 +1,16 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug HeroAscendant",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/windows-debug/Debug/HeroAscendant.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build/windows-debug/Debug",
+            "environment": [],
+            "console": "integratedTerminal"
+        }
+    ]
+}
