@@ -74,10 +74,13 @@ void Game::HandleEvents()
         //   switches to another app. We should pause music here.
         //   This doesn't exist on Windows (will be ignored).
         case SDL_APP_WILLENTERBACKGROUND:
+            // Fire through EventBus so any system can react to app pause
+            m_eventBus.Fire(EventType::AppPaused, AppPausedEvent{});
             m_audio.PauseMusic();
             break;
 
         case SDL_APP_DIDENTERFOREGROUND:
+            m_eventBus.Fire(EventType::AppResumed, AppResumedEvent{});
             m_audio.ResumeMusic();
             break;
 
@@ -89,9 +92,11 @@ void Game::HandleEvents()
 
 void Game::Update(float deltaTime)
 {
-    // Layer 1 has nothing to update yet.
-    // When GameStateManager is added (Layer 4) this becomes:
-    //   m_stateManager.Update(deltaTime);
+    // Dispatch deferred events at the START of each frame,
+    // before any system runs its Update(). This ensures events
+    // fired last frame are delivered before new logic executes.
+    m_eventBus.Dispatch();
+
     (void)deltaTime; // suppress unused parameter warning for now
 }
 

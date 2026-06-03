@@ -4,6 +4,7 @@
 #include "AssetManager.h"
 #include "../renderer/Renderer.h"
 #include "../audio/AudioManager.h"
+#include "../events/EventBus.h"
 
 // ==============================================================================
 // Game — owns the main loop and all top-level systems.
@@ -32,6 +33,8 @@ private:
     Renderer m_renderer;
     AssetManager m_assets;
     AudioManager m_audio;
+
+    EventBus m_eventBus;
 
     bool m_running = false;
 
