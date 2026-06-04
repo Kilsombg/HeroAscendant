@@ -181,12 +181,21 @@ bool Engine::InitSDLImage()
     // IMG_INIT_PNG — we need PNG for pixel art sprites (lossless + transparency)
     // IMG_INIT_JPG — useful for background images
     //
-    // IMG_Init returns the flags that were successfully initialized.
     int imgFlags = IMG_INIT_PNG | IMG_INIT_JPG;
-    if ((IMG_Init(imgFlags) & imgFlags) != imgFlags)
+    int initialized = IMG_Init(imgFlags);
+
+    if (!(initialized & IMG_INIT_PNG))
     {
-        std::cerr << "[Engine] IMG_Init failed: " << IMG_GetError() << "\n";
+        std::cerr << "[Engine] IMG_Init failed to initialize PNG support: "
+                  << IMG_GetError() << "\n";
         return false;
+    }
+
+    // JPEG is optional — warn but continue
+    if (!(initialized & IMG_INIT_JPG))
+    {
+        std::cerr << "[Engine] Warning: JPEG support unavailable: "
+                  << IMG_GetError() << "\n";
     }
 
     return true;
