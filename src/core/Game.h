@@ -5,6 +5,7 @@
 #include "../renderer/Renderer.h"
 #include "../audio/AudioManager.h"
 #include "../events/EventBus.h"
+#include "../states/GameStateManager.h"
 
 // ==============================================================================
 // Game — owns the main loop and all top-level systems.
@@ -36,6 +37,8 @@ private:
 
     EventBus m_eventBus;
 
+    GameStateManager m_stateManager;
+
     bool m_running = false;
 
     // Delta time — how many seconds passed since last frame.
@@ -51,4 +54,7 @@ private:
 
     // Calculates delta time from SDL tick counter
     float CalculateDeltaTime();
+
+    // Builds the StateContext that gets passed to every state
+    StateContext MakeContext();
 };

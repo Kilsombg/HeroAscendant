@@ -1,4 +1,5 @@
 #include "Game.h"
+#include "../states/MainMenuState.h"
 
 #include <iostream>
 
@@ -20,6 +21,11 @@ int Game::Run()
     m_renderer.Init(m_engine.GetSDLRenderer());
     m_assets.Init(m_engine.GetSDLRenderer());
 
+    // Push the first state — MainMenu is the entry point of the game.
+    // All state transitions happen through GameStateManager from here.
+    m_stateManager.Push(std::make_unique<MainMenuState>(MakeContext()));
+    m_stateManager.ApplyPendingChanges(); // Apply immediately so first frame works
+
     // AudioManager has no SDL dependencies beyond what Engine::Init set up.
     // (Mix_OpenAudio was called in Engine::InitSDLMixer)
 
@@ -31,6 +37,14 @@ int Game::Run()
     // This order ensures input is processed, state is updated, then drawn.
     while (m_running)
     {
+        // Stop if state manager runs out of states
+        // (e.g. last state popped without pushing a new one)
+        if (m_stateManager.IsEmpty())
+        {
+            m_running = false;
+            break;
+        }
+
         float dt = CalculateDeltaTime();
 
         HandleEvents();
@@ -87,17 +101,26 @@ void Game::HandleEvents()
         default:
             break;
         }
+
+        // Forward every event to the active state AFTER global handling.
+        // State gets the event even if we handled it above — states may
+        // also want to react to SDL_QUIT (e.g. auto-save before exit).
+        m_stateManager.HandleInput(event);
     }
 }
 
 void Game::Update(float deltaTime)
 {
-    // Dispatch deferred events at the START of each frame,
+    // 1. Apply any Push/Pop/Replace operations queued last frame
+    m_stateManager.ApplyPendingChanges();
+
+    // 2. Dispatch deferred events at the START of each frame,
     // before any system runs its Update(). This ensures events
     // fired last frame are delivered before new logic executes.
     m_eventBus.Dispatch();
 
-    (void)deltaTime; // suppress unused parameter warning for now
+    // 3. Update the active state
+    m_stateManager.Update(deltaTime);
 }
 
 void Game::Render()
@@ -105,9 +128,8 @@ void Game::Render()
     // 1. Clear the screen
     m_renderer.Clear(Color{10, 10, 40, 255}); // Dark blue background
 
-    // 2. Draw everything (nothing yet in Layer 1)
-    // When GameStateManager is added this becomes:
-    //   m_stateManager.Render(m_renderer);
+    // 2. GameStateManager renders bottom-to-top respecting IsTransparent()
+    m_stateManager.Render();
 
     // 3. Present (swap buffers)
     m_renderer.Present();
@@ -135,4 +157,16 @@ float Game::CalculateDeltaTime()
         dt = 0.1f;
 
     return dt;
+}
+
+StateContext Game::MakeContext()
+{
+    // Bundle references to all systems a state might need.
+    // Passing references (not pointers) means states can't store nullptr.
+    return StateContext{
+        m_renderer,
+        m_assets,
+        m_audio,
+        m_eventBus,
+        m_stateManager};
 }
