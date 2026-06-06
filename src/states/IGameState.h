@@ -9,6 +9,10 @@ class AssetManager;
 class AudioManager;
 class EventBus;
 class GameStateManager;
+class Inventory;
+class CraftingSystem;
+class QuestSystem;
+class SaveSystem;
 
 // ==============================================================================
 // StateContext — everything a state needs to do its job.
@@ -24,6 +28,10 @@ struct StateContext
     AudioManager &audio;
     EventBus &eventBus;
     GameStateManager &stateManager;
+    Inventory &inventory;
+    CraftingSystem &craftingSystem;
+    QuestSystem &questSystem;
+    SaveSystem &saveSystem;
 };
 
 // ==============================================================================

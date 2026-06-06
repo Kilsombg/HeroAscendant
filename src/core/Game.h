@@ -6,6 +6,10 @@
 #include "../audio/AudioManager.h"
 #include "../events/EventBus.h"
 #include "../states/GameStateManager.h"
+#include "../systems/Inventory.h"
+#include "../systems/CraftingSystem.h"
+#include "../systems/QuestSystem.h"
+#include "../systems/SaveSystem.h"
 
 // ==============================================================================
 // Game — owns the main loop and all top-level systems.
@@ -29,22 +33,26 @@ public:
     int Run();
 
 private:
-    // The four Layer 1 systems
+    // SDL2 foundation
     Engine m_engine;
     Renderer m_renderer;
     AssetManager m_assets;
     AudioManager m_audio;
 
+    // Event system
+    // Must be declared before any system that subscribes to events
     EventBus m_eventBus;
 
+    // State Management
     GameStateManager m_stateManager;
 
-    bool m_running = false;
+    // Progression systems
+    Inventory m_inventory;
+    CraftingSystem m_craftingSystem;
+    QuestSystem m_questSystem;
+    SaveSystem m_saveSystem;
 
-    // Delta time — how many seconds passed since last frame.
-    // Used to make movement/animation frame-rate independent.
-    // Example: moving 200 pixels/second = position += 200 * deltaTime each frame.
-    float m_deltaTime = 0.0f;
+    bool m_running = false;
     Uint32 m_lastTick = 0;
 
     // Loop steps — called every frame
@@ -54,6 +62,12 @@ private:
 
     // Calculates delta time from SDL tick counter
     float CalculateDeltaTime();
+
+    // Startup / shutdown helpers
+
+    void InitSystems();
+    void ShutdownSystems();
+    void LoadOrStartNewGame();
 
     // Builds the StateContext that gets passed to every state
     StateContext MakeContext();

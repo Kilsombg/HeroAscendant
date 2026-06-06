@@ -3,7 +3,11 @@
 
 #include <iostream>
 
-Game::Game() = default;
+Game::Game()
+    : m_craftingSystem(m_eventBus), m_questSystem(m_eventBus)
+{
+}
+
 Game::~Game() = default;
 
 int Game::Run()
@@ -21,13 +25,16 @@ int Game::Run()
     m_renderer.Init(m_engine.GetSDLRenderer());
     m_assets.Init(m_engine.GetSDLRenderer());
 
+    // --- System init ---
+    InitSystems();
+
+    // --- Load or start new game ---
+    LoadOrStartNewGame();
+
     // Push the first state — MainMenu is the entry point of the game.
     // All state transitions happen through GameStateManager from here.
     m_stateManager.Push(std::make_unique<MainMenuState>(MakeContext()));
     m_stateManager.ApplyPendingChanges(); // Apply immediately so first frame works
-
-    // AudioManager has no SDL dependencies beyond what Engine::Init set up.
-    // (Mix_OpenAudio was called in Engine::InitSDLMixer)
 
     m_running = true;
     m_lastTick = SDL_GetTicks();
@@ -55,11 +62,53 @@ int Game::Run()
     // --- Shutdown ---
     // Destroy assets before renderer (textures need renderer to be alive first
     // but can be destroyed before it).
+    ShutdownSystems();
     m_assets.Shutdown();
     m_engine.Shutdown();
 
     return 0;
 }
+
+// ==============================================================================
+// Startup / shutdown helpers
+// ==============================================================================
+
+void Game::InitSystems()
+{
+    // CraftingSystem registers all recipes
+    m_craftingSystem.InitRecipes();
+
+    // QuestSystem subscribes to EventBus and registers quests
+    m_questSystem.Init();
+
+    std::cout << "[Game] All systems initialized.\n";
+}
+
+void Game::ShutdownSystems()
+{
+    // QuestSystem unsubscribes its EventBus listeners
+    m_questSystem.Shutdown();
+}
+
+void Game::LoadOrStartNewGame()
+{
+    GameSave save;
+    if (m_saveSystem.Load(save))
+    {
+        // Restore state from save file.
+        // Hero entity doesn't exist yet — stats are stored in the save
+        // and applied to the hero entity when MainMenuState creates it.
+        std::cout << "[Game] Save loaded — hero level " << save.heroLevel << ".\n";
+    }
+    else
+    {
+        std::cout << "[Game] No save found: starting new game.\n";
+    }
+}
+
+// ==============================================================================
+// Per-frame
+// ==============================================================================
 
 void Game::HandleEvents()
 {
@@ -119,6 +168,9 @@ void Game::Update(float deltaTime)
     // fired last frame are delivered before new logic executes.
     m_eventBus.Dispatch();
 
+    // 3. Update quest system (checks daily/weekly reset timestamps)
+    m_questSystem.Update();
+
     // 3. Update the active state
     m_stateManager.Update(deltaTime);
 }
@@ -168,5 +220,9 @@ StateContext Game::MakeContext()
         m_assets,
         m_audio,
         m_eventBus,
-        m_stateManager};
+        m_stateManager,
+        m_inventory,
+        m_craftingSystem,
+        m_questSystem,
+        m_saveSystem};
 }
