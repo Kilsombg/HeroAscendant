@@ -1,4 +1,5 @@
 #include "CraftingSystem.h"
+#include "../core/RNG.h"
 
 #include <cstdlib>
 #include <iostream>
@@ -296,7 +297,7 @@ const Recipe *CraftingSystem::FindRecipe(uint32_t id) const
 ItemRarity CraftingSystem::RollRarity() const
 {
     // Roll 0.0 to 1.0
-    float roll = static_cast<float>(rand()) / RAND_MAX;
+    float roll = RNG::Get().NextFloat();
 
     if (roll < 0.03f)
         return ItemRarity::Legendary; // 3%

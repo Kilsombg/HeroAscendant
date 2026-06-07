@@ -54,8 +54,13 @@ private:
     int m_floorIndex = 0;                      // Current floor (0-based)
     static constexpr int FLOORS_PER_STAGE = 4; // 3 normal + 1 boss
 
+    ListenerID m_appPausedListenerId = 0;
+    void OnAppPaused();
+
     // EntityManager lives here — created in OnEnter, destroyed in OnExit
     std::unique_ptr<EntityManager> m_entityManager;
+
+    int m_enemiesKilledThisFloor = 0; // track for resurrection respawn point
 
     uint32_t m_heroId = 0;
     HeroMoveState m_heroMoveState = HeroMoveState::Moving;
@@ -113,6 +118,8 @@ private:
 
     // Flip enemy render component to face the correct direction
     void SetEnemyFacing(Entity *enemy) const;
+
+    int CalculateStageReward() const;
 
     // -----------------------------------------------------------------------
     // Event callbacks

@@ -101,6 +101,23 @@ public:
     int GetHPUpgradeCost() const;
     bool UpgradeHP();
 
+    // -----------------------------------------------------------------------
+    // Direct setters for save/load restore — NO events fired, NO coin cost.
+    // Use ONLY from SaveSystem::RestoreHeroStats.
+    // -----------------------------------------------------------------------
+
+    void SetCoins(int coins) { m_coins = coins; }
+    void SetLevel(int level) { m_level = level; }
+    void SetXP(int xp, int xpToNext)
+    {
+        m_xp = xp;
+        m_xpToNextLevel = xpToNext;
+    }
+    void SetStrengthLevel(int level) { m_strengthLevel = level; }
+    void SetDefenseLevel(int level) { m_defenseLevel = level; }
+    void SetAgilityLevel(int level) { m_agilityLevel = level; }
+    void SetHPLevel(int level) { m_hpLevel = level; }
+
 private:
     EventBus &m_eventBus;
 

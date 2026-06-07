@@ -17,44 +17,52 @@ void UIRenderer::DrawHealthBar(int x, int y, int w, int h,
                                bool isHero)
 {
     float fillPct = (max > 0) ? static_cast<float>(current) / max : 0.0f;
-    if (fillPct < 0.0f)
-        fillPct = 0.0f;
-    if (fillPct > 1.0f)
-        fillPct = 1.0f;
+    fillPct = std::max(0.0f, std::min(1.0f, fillPct));
 
-    // Choose bar color:
-    //   Hero:  green → yellow → red as HP drops
-    //   Enemy: always red
     Color fillColor;
     if (isHero)
     {
         if (fillPct > 0.6f)
-            fillColor = Color{50, 200, 50, 255}; // Green
+            fillColor = Color{50, 200, 50, 255};
         else if (fillPct > 0.3f)
-            fillColor = Color{220, 180, 20, 255}; // Yellow
+            fillColor = Color{220, 180, 20, 255};
         else
-            fillColor = Color{220, 50, 50, 255}; // Red
+            fillColor = Color{220, 50, 50, 255};
     }
     else
     {
-        fillColor = Color{200, 50, 50, 255}; // Enemy always red
+        fillColor = Color{200, 50, 50, 255};
     }
 
     DrawBar(x, y, w, h, fillPct, fillColor);
 
-    // HP text drawn INSIDE the bar — always on screen regardless of y position.
-    // Vertically centers ~14px text within the bar height.
-    int textY = y + h / 2 - 7;
-    m_renderer.DrawText(GetFont(), label, x + 6, textY, Color::White);
+    TTF_Font *font = GetFont(false);
 
+    // Vertically centre all text within the bar height.
+    // MeasureText gives us the real glyph height so the maths is exact
+    // regardless of font or point size.
+    auto [labelW, labelH] = MeasureText(label);
+    int textY = y + (h - labelH) / 2;
+
+    // Label — left-aligned with a small left margin
+    m_renderer.DrawText(font, label, x + 6, textY, Color::White);
+
+    // "current / max" — right-aligned with a small right margin.
+    // We measure the HP string so the right edge always lands in the
+    // same place regardless of how many digits current and max have.
     std::string hpText = std::to_string(current) + " / " + std::to_string(max);
-    int hpTextX = x + w - static_cast<int>(hpText.size()) * 9 - 6;
-    m_renderer.DrawText(GetFont(), hpText, hpTextX, textY, Color::White);
+    auto [hpW, hpH] = MeasureText(hpText);
+    int hpTextX = x + w - hpW - 6;
+    int hpTextY = y + (h - hpH) / 2;
+
+    m_renderer.DrawText(font, hpText, hpTextX, hpTextY, Color::White);
 }
 
 // ==============================================================================
 // Buttons
 // ==============================================================================
+
+// src/ui/UIRenderer.cpp — replace DrawButton:
 
 void UIRenderer::DrawButton(int x, int y, int w, int h,
                             const std::string &label,
@@ -64,7 +72,7 @@ void UIRenderer::DrawButton(int x, int y, int w, int h,
     // Background
     m_renderer.DrawRect(x, y, w, h, bgColor, true);
 
-    // Border — 3px slightly lighter
+    // Border — slightly lighter than background
     Color border = Color{
         static_cast<Uint8>(std::min(255, bgColor.r + 40)),
         static_cast<Uint8>(std::min(255, bgColor.g + 40)),
@@ -72,11 +80,29 @@ void UIRenderer::DrawButton(int x, int y, int w, int h,
         255};
     m_renderer.DrawRect(x, y, w, h, border, false);
 
-    // Centered label — approximate centering, font metrics not available
-    // without TTF_SizeText. Position is offset from center.
-    int textX = x + w / 2 - static_cast<int>(label.size()) * 8;
-    int textY = y + h / 2 - 14;
+    // Measure the label so we can centre it exactly in both axes.
+    // Previously this used label.size() * 8 which was wrong for any
+    // font other than the one it was tuned for.
+    auto [tw, th] = MeasureText(label);
+    int textX = x + (w - tw) / 2;
+    int textY = y + (h - th) / 2;
+
     m_renderer.DrawText(GetFont(), label, textX, textY, labelColor);
+}
+
+bool UIRenderer::HitTest(int tapX, int tapY, int x, int y, int w, int h)
+{
+    return tapX >= x && tapX <= x + w &&
+           tapY >= y && tapY <= y + h;
+}
+
+bool UIRenderer::HitButton(int tapX, int tapY,
+                           int x, int y, int w, int h,
+                           const std::string &label,
+                           Color bgColor, Color labelColor)
+{
+    DrawButton(x, y, w, h, label, bgColor, labelColor);
+    return HitTest(tapX, tapY, x, y, w, h);
 }
 
 void UIRenderer::DrawAttackButton(bool highlighted)
@@ -115,10 +141,19 @@ void UIRenderer::DrawLabel(const std::string &text,
                            Color color,
                            bool large)
 {
-    // Approximate text width: ~14px per character for small, ~22px for large
-    int charWidth = large ? 22 : 14;
-    int textX = centerX - static_cast<int>(text.size()) * charWidth / 2;
+    // Measure the actual rendered width so the text is centred on
+    // centerX regardless of font, size, or character mix.
+    // Previously: charWidth = large ? 22 : 14 — a fixed estimate that
+    // was wrong for most fonts and broke entirely after a font change.
+    auto [tw, th] = MeasureText(text, large);
+    int textX = centerX - tw / 2;
+
     m_renderer.DrawText(GetFont(large), text, textX, y, color);
+}
+
+SDL_Point UIRenderer::MeasureText(const std::string &text, bool large) const
+{
+    return m_renderer.MeasureText(GetFont(large), text);
 }
 
 void UIRenderer::DrawFloorIndicator(int currentFloor, int totalFloors)
@@ -130,9 +165,33 @@ void UIRenderer::DrawFloorIndicator(int currentFloor, int totalFloors)
 
 void UIRenderer::DrawCoinCount(int coins)
 {
-    // Coin icon placeholder + count — bottom center
-    std::string text = "Coins: " + std::to_string(coins);
-    DrawLabel(text, SCREEN_W / 2, SCREEN_H - 80, Color{255, 215, 0, 255});
+    SDL_Texture *icon = m_assets.GetTexture("coin_icon");
+    int iconSize = 48;
+    std::string text = std::to_string(coins);
+
+    // Measure the number string so we can position icon + text as a unit
+    // centred on SCREEN_W / 2.
+    auto [tw, th] = MeasureText(text);
+
+    // Total width of the icon+gap+text block
+    int blockW = icon ? (iconSize + 8 + tw) : tw;
+    int blockX = SCREEN_W / 2 - blockW / 2;
+    int baseY = SCREEN_H - 80;
+
+    if (icon)
+    {
+        m_renderer.DrawTexture(icon,
+                               blockX, baseY + (th - iconSize) / 2,
+                               iconSize, iconSize);
+        m_renderer.DrawText(GetFont(), text,
+                            blockX + iconSize + 8, baseY,
+                            Color{255, 215, 0, 255});
+    }
+    else
+    {
+        m_renderer.DrawText(GetFont(), text, blockX, baseY,
+                            Color{255, 215, 0, 255});
+    }
 }
 
 // ==============================================================================
@@ -223,11 +282,26 @@ void UIRenderer::DrawPotionSlots(int slotCount, int maxSlots)
 
         if (hasPotion)
         {
-            // "P" placeholder — replaced with potion sprite when assets are ready
-            m_renderer.DrawText(GetFont(), "P",
-                                slotX + slotSize / 2 - 7,
-                                startY + slotSize / 2 - 14,
-                                Color::White);
+            SDL_Texture *icon = m_assets.GetTexture("potion_icon");
+            if (icon)
+            {
+                int margin = 8;
+                m_renderer.DrawTexture(icon,
+                                       slotX + margin, startY + margin,
+                                       slotSize - margin * 2,
+                                       slotSize - margin * 2);
+            }
+            else
+            {
+                // Fallback letter until the sprite asset exists.
+                // Centred properly now using MeasureText.
+                const std::string fallback = "P";
+                auto [fw, fh] = MeasureText(fallback);
+                m_renderer.DrawText(GetFont(), fallback,
+                                    slotX + (slotSize - fw) / 2,
+                                    startY + (slotSize - fh) / 2,
+                                    Color::White);
+            }
         }
     }
 }

@@ -87,6 +87,18 @@ public:
 
     bool HasMaterial(uint32_t itemId, int quantity = 1) const;
 
+    // GetAllMaterials — returns the full material map for serialisation.
+    // The map is keyed by item ID and stores name + quantity.
+    // Const ref — caller must not modify the map directly.
+    struct MaterialStack
+    {
+        std::string name;
+        int quantity = 0;
+    }; // already defined privately
+    // We expose it publicly here via a typedef so SaveSystem can use the type:
+    using MaterialMap = std::unordered_map<uint32_t, MaterialStack>;
+    const MaterialMap &GetAllMaterials() const { return m_materials; }
+
     // -----------------------------------------------------------------------
     // Gear and potions — unique instances
     // -----------------------------------------------------------------------
@@ -134,13 +146,7 @@ public:
     int GetEquippedPotionCount() const;
 
 private:
-    // Material stacks: itemId → {name, quantity}
-    struct MaterialStack
-    {
-        std::string name;
-        int quantity = 0;
-    };
-    std::unordered_map<uint32_t, MaterialStack> m_materials;
+    MaterialMap m_materials;
 
     // Gear/potion instances: instanceId → Item
     std::unordered_map<uint32_t, Item> m_items;

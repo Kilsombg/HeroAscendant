@@ -38,6 +38,8 @@ void AssetManager::Shutdown()
     m_music.clear();
 
     // Close all fonts
+    ClearTextCache();
+
     for (auto &[id, font] : m_fonts)
     {
         if (font)
@@ -222,6 +224,43 @@ TTF_Font *AssetManager::GetFont(const std::string &id) const
 {
     auto it = m_fonts.find(id);
     return (it != m_fonts.end()) ? it->second : nullptr;
+}
+
+SDL_Texture *AssetManager::GetOrCreateTextTexture(const std::string &fontId,
+                                                  const std::string &text,
+                                                  SDL_Color color)
+{
+    // Build cache key — font + text + color uniquely identify the texture
+    std::string key = fontId + ":" + text + ":" + std::to_string(color.r) + "," + std::to_string(color.g) + "," + std::to_string(color.b);
+
+    auto it = m_textCache.find(key);
+    if (it != m_textCache.end())
+        return it->second; // Cache hit — no GPU allocation needed
+
+    TTF_Font *font = GetFont(fontId);
+    if (!font)
+        return nullptr;
+
+    // Cache miss — render the text surface and upload to GPU
+    SDL_Surface *surface = TTF_RenderText_Blended(font, text.c_str(), color);
+    if (!surface)
+        return nullptr;
+
+    SDL_Texture *texture = SDL_CreateTextureFromSurface(m_renderer, surface);
+    SDL_FreeSurface(surface);
+    if (!texture)
+        return nullptr;
+
+    m_textCache[key] = texture;
+    return texture;
+}
+
+void AssetManager::ClearTextCache()
+{
+    for (auto &[key, tex] : m_textCache)
+        if (tex)
+            SDL_DestroyTexture(tex);
+    m_textCache.clear();
 }
 
 // ==============================================================================

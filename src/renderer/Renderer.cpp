@@ -1,5 +1,7 @@
 #include "Renderer.h"
 
+#include "../core/AssetManager.h"
+
 #include <SDL2/SDL_ttf.h>
 #include <iostream>
 
@@ -18,9 +20,10 @@ const Color Color::Transparent = {0, 0, 0, 0};
 Renderer::Renderer() = default;
 Renderer::~Renderer() = default;
 
-void Renderer::Init(SDL_Renderer *sdlRenderer)
+void Renderer::Init(SDL_Renderer *sdlRenderer, AssetManager *assets)
 {
     m_sdlRenderer = sdlRenderer;
+    m_assets = assets;
 }
 
 // ==============================================================================
@@ -144,48 +147,57 @@ void Renderer::DrawText(TTF_Font *font,
         return;
 
     SDL_Color sdlColor = ToSDLColor(color);
+    SDL_Texture *texture = nullptr;
+    bool owned = false; // whether we must destroy it after drawing
 
-    // TTF_RenderText_Blended renders text to a new SDL_Surface.
-    // "Blended" = high quality anti-aliased rendering with alpha blending.
-    // Other modes:
-    //   TTF_RenderText_Solid   — fastest, no anti-aliasing, aliased edges
-    //   TTF_RenderText_Shaded  — anti-aliased on a solid background box
-    //   TTF_RenderText_Blended — best quality, slightly slower
-    //
-    // For pixel art UI you might prefer Solid (crisp, no blur).
-    // For readable body text, Blended looks better.
-    SDL_Surface *surface = TTF_RenderText_Blended(font, text.c_str(), sdlColor);
-
-    if (!surface)
+    if (m_assets)
     {
-        std::cerr << "[Renderer] TTF_RenderText_Blended failed: " << TTF_GetError() << "\n";
-        return;
+        // We need the font id to build the cache key.
+        // Since we receive a raw TTF_Font*, we can't look it up directly.
+        // Workaround: use the pointer address as a key component.
+        // This works because the same font pointer = same font.
+        std::string fontKey = "ptr:" + std::to_string(
+                                           reinterpret_cast<uintptr_t>(font));
+        texture = m_assets->GetOrCreateTextTexture(fontKey, text, sdlColor);
     }
-
-    // SDL_CreateTextureFromSurface converts the CPU surface to a GPU texture.
-    // After this the surface is no longer needed.
-    SDL_Texture *texture = SDL_CreateTextureFromSurface(m_sdlRenderer, surface);
-
-    // SDL_FreeSurface frees the CPU memory. Always do this after creating the texture.
-    SDL_FreeSurface(surface);
 
     if (!texture)
     {
-        std::cerr << "[Renderer] SDL_CreateTextureFromSurface failed: " << SDL_GetError() << "\n";
-        return;
+        // Fallback — old behaviour, creates and destroys per call
+        SDL_Surface *surface = TTF_RenderText_Solid(font, text.c_str(), sdlColor);
+        if (!surface)
+            return;
+        texture = SDL_CreateTextureFromSurface(m_sdlRenderer, surface);
+        SDL_FreeSurface(surface);
+        owned = true;
     }
 
-    // Query the texture size so we draw it at the right size.
+    if (!texture)
+        return;
+
     int tw, th;
     SDL_QueryTexture(texture, nullptr, nullptr, &tw, &th);
+    SDL_Rect dst = {x, y, tw, th};
+    SDL_RenderCopy(m_sdlRenderer, texture, nullptr, &dst);
 
-    SDL_Rect dstRect = {x, y, tw, th};
-    SDL_RenderCopy(m_sdlRenderer, texture, nullptr, &dstRect);
+    if (owned)
+        SDL_DestroyTexture(texture);
+}
 
-    // Destroy the temporary texture — it was created just for this draw call.
-    // In practice you'd cache font textures in AssetManager for performance,
-    // but for now this is correct and simple.
-    SDL_DestroyTexture(texture);
+SDL_Point Renderer::MeasureText(TTF_Font *font, const std::string &text) const
+{
+    if (!font || text.empty())
+        return {0, 0};
+
+    int w = 0, h = 0;
+
+    // TTF_SizeText fills w and h with the pixel dimensions the rendered
+    // surface would have. Returns 0 on success, -1 on error.
+    // We ignore the return value — if it fails w/h stay 0, which is a
+    // safe fallback (text just draws at position 0,0 instead of centred).
+    TTF_SizeText(font, text.c_str(), &w, &h);
+
+    return {w, h};
 }
 
 void Renderer::SetDrawAlpha(Uint8 alpha)

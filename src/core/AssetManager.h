@@ -101,12 +101,28 @@ public:
     void UnloadSound(const std::string &id);
     void UnloadMusic(const std::string &id);
 
+    // GetOrCreateTextTexture — returns a cached SDL_Texture for the given text,
+    // font id, and color. Creates and caches it on first call.
+    // The cache key is "fontId:text:r,g,b" — distinct colors = distinct textures.
+    //
+    // Returned pointer is valid until Shutdown() or UnloadFont() for that font id.
+    // Caller must NOT destroy it.
+    SDL_Texture *GetOrCreateTextTexture(const std::string &fontId,
+                                        const std::string &text,
+                                        SDL_Color color);
+
+    // ClearTextCache — frees all cached text textures.
+    // Call when the locale or font changes.
+    void ClearTextCache();
+
 private:
     SDL_Renderer *m_renderer = nullptr;
 
     // unordered_map gives O(1) average lookup by string key.
     // The map OWNS the SDL pointers — destroyed in Shutdown().
     std::unordered_map<std::string, SDL_Texture *> m_textures;
+    // Text texture cache — key: "fontId:text:r,g,b,a"
+    std::unordered_map<std::string, SDL_Texture *> m_textCache;
     std::unordered_map<std::string, Mix_Chunk *> m_sounds;
     std::unordered_map<std::string, Mix_Music *> m_music;
     std::unordered_map<std::string, TTF_Font *> m_fonts;

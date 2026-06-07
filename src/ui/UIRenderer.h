@@ -60,6 +60,23 @@ public:
                     Color bgColor = Color{60, 60, 120, 220},
                     Color labelColor = Color::White);
 
+    // DrawButton with hit-test — returns true if tapX/tapY falls inside the button.
+    // States call this during input handling to remove hardcoded coordinate ranges.
+    //
+    // Usage:
+    //   int tx, ty; GetTapPosition(event, tx, ty);
+    //   if (m_ctx.uiRenderer.HitButton(tx, ty, btnX, btnY, btnW, btnH, "RESUME", bg))
+    //       m_ctx.stateManager.Pop();
+    bool HitButton(int tapX, int tapY,
+                   int x, int y, int w, int h,
+                   const std::string &label,
+                   Color bgColor = Color{60, 60, 120, 220},
+                   Color labelColor = Color::White);
+
+    // HitTest — pure geometry check, no drawing. Use when you need to test
+    // a region that isn't drawn by UIRenderer (e.g. custom sprite buttons).
+    static bool HitTest(int tapX, int tapY, int x, int y, int w, int h);
+
     // DrawAttackButton — large bottom-right attack button
     // highlighted = true when hero is in combat range (pulses slightly)
     void DrawAttackButton(bool highlighted);
@@ -76,6 +93,10 @@ public:
                    int centerX, int y,
                    Color color = Color::White,
                    bool large = false);
+
+    // MeasureText — measures text width and height using the given font.
+    // Wraps m_renderer.MeasureText so call sites stay one line.
+    SDL_Point MeasureText(const std::string &text, bool large = false) const;
 
     // DrawFloorIndicator — "Floor 2 / 4" shown at top center in battle
     void DrawFloorIndicator(int currentFloor, int totalFloors);

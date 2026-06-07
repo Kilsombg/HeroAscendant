@@ -1,7 +1,9 @@
 #include "Game.h"
+#include "RNG.h"
 #include "../states/MainMenuState.h"
 
 #include <iostream>
+#include <ctime>
 
 Game::Game()
     : m_craftingSystem(m_eventBus), m_questSystem(m_eventBus), m_uiRenderer(m_renderer, m_assets)
@@ -22,7 +24,7 @@ int Game::Run()
     }
 
     // Renderer and AssetManager need the SDL_Renderer from Engine.
-    m_renderer.Init(m_engine.GetSDLRenderer());
+    m_renderer.Init(m_engine.GetSDLRenderer(), &m_assets);
     m_assets.Init(m_engine.GetSDLRenderer());
 
     // --- System init ---
@@ -38,6 +40,8 @@ int Game::Run()
 
     m_running = true;
     m_lastTick = SDL_GetTicks();
+
+    RNG::Get().Seed(static_cast<uint32_t>(std::time(nullptr)));
 
     // --- Main Loop ---
     // The structure is always: events → update → render.
@@ -72,8 +76,8 @@ void Game::InitSystems()
     // Load fonts — UIRenderer::GetFont() returns nullptr until these are loaded.
     // Font file must exist at assets/fonts/pixel_font.ttf
     // If not found, text won't draw but game won't crash.
-    TTF_Font *small = m_assets.LoadFont("ui_small", "AvelineEleganzaRegular.otf", 30);
-    TTF_Font *large = m_assets.LoadFont("ui_large", "AvelineEleganzaRegular.otf", 52);
+    TTF_Font *small = m_assets.LoadFont("ui_small", "PressStart2P-Regular.ttf", 24);
+    TTF_Font *large = m_assets.LoadFont("ui_large", "PressStart2P-Regular.ttf", 48);
 
     if (!small || !large)
         std::cerr << "[Game] WARNING: Font failed to load. "

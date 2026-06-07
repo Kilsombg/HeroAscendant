@@ -17,7 +17,7 @@
 class VictoryState : public IGameState
 {
 public:
-    VictoryState(StateContext ctx, int stageIndex);
+    VictoryState(StateContext ctx, int stageIndex, int coinsEarned);
 
     void OnEnter() override;
     void OnExit() override;
@@ -31,4 +31,5 @@ public:
 private:
     StateContext m_ctx;
     int m_stageIndex = 0;
+    int m_coinsEarned = 0;
 };

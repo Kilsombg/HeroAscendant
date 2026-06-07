@@ -48,22 +48,33 @@ void DeathState::HandleInput(const SDL_Event &event)
     // Touch/mouse — Resurrect button: y=920-1020, Quit button: y=1060-1160
     if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_FINGERDOWN)
     {
-        int tapX, tapY;
+        int tapX = 0, tapY = 0;
+        bool isTap = false;
+
         if (event.type == SDL_FINGERDOWN)
         {
             tapX = static_cast<int>(event.tfinger.x * 1080);
             tapY = static_cast<int>(event.tfinger.y * 1920);
+            isTap = true;
         }
-        else
+        else if (event.type == SDL_MOUSEBUTTONDOWN &&
+                 event.button.button == SDL_BUTTON_LEFT)
         {
             tapX = event.button.x;
             tapY = event.button.y;
+            isTap = true;
         }
 
-        if (tapX >= 340 && tapX <= 740 && tapY >= 920 && tapY <= 1020)
+        if (!isTap)
+            return;
+
+        int btnW = 400, btnH = 100;
+        int btnX = (1080 - btnW) / 2;
+
+        if (UIRenderer::HitTest(tapX, tapY, btnX, 900, btnW, btnH))
             m_ctx.stateManager.Pop();
 
-        if (tapX >= 340 && tapX <= 740 && tapY >= 1060 && tapY <= 1160)
+        if (UIRenderer::HitTest(tapX, tapY, btnX, 1040, btnW, btnH))
             m_ctx.stateManager.PopAll(std::make_unique<MainMenuState>(m_ctx));
     }
 }

@@ -72,9 +72,20 @@ public:
     // Set by EntityManager when creating the hero entity
     void SetIsHero(bool isHero) { m_isHero = isHero; }
 
+    // SetBattleContext — called by EntityManager so death events carry
+    // the correct floor/stage. Not known at construction time.
+    void SetBattleContext(int floorIndex, int stageIndex)
+    {
+        m_floorIndex = floorIndex;
+        m_stageIndex = stageIndex;
+    }
+
 private:
     int m_maxHP;
     int m_currentHP;
     bool m_isHero = false; // true = fire HeroTookDamage, false = EnemyDied
+    int m_floorIndex = 0;
+    int m_stageIndex = 0;
+
     EventBus &m_eventBus;
 };

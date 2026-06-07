@@ -1,5 +1,7 @@
 #include "EntityManager.h"
 
+#include "../systems/CraftingSystem.h"
+
 #include <algorithm>
 #include <iostream>
 
@@ -24,6 +26,7 @@ uint32_t EntityManager::CreateHero(float x, float y)
     // Hero starts with 200 HP. StatsComponent HP upgrades add to this.
     auto *health = entity->AddComponent<HealthComponent>(200, m_eventBus);
     health->SetIsHero(true); // Fire HeroTookDamage event on damage
+    health->SetBattleContext(0, m_stageIndex);
 
     // --- Combat ---
     // Base attack: 15 damage, 1 auto-attack per second, 5% crit chance
@@ -86,7 +89,8 @@ uint32_t EntityManager::CreateEnemy(EnemyType type, float x, float y, int floorI
 
     // --- Health (scaled by floor) ---
     int scaledHP = ScaleHP(data.baseHP, floorIndex);
-    entity->AddComponent<HealthComponent>(scaledHP, m_eventBus);
+    auto *health = entity->AddComponent<HealthComponent>(scaledHP, m_eventBus);
+    health->SetBattleContext(floorIndex, m_stageIndex);
 
     // --- Combat (scaled by floor) ---
     int scaledDmg = ScaleDamage(data.baseDamage, floorIndex);
@@ -113,6 +117,8 @@ uint32_t EntityManager::CreateEnemy(EnemyType type, float x, float y, int floorI
         AIBehaviour::Stationary,
         data.attackRange,
         data.attackInterval);
+
+    entity->AddComponent<EnemyTypeComponent>(type);
 
     uint32_t id = entity->GetId();
     AddEntity(std::move(entity));
@@ -233,6 +239,49 @@ void EntityManager::Clear()
     // OnDetach is called via Entity destructor for each component
     m_entities.clear();
     m_heroId = 0;
+}
+
+const LootTable &EntityManager::GetLootTable(EnemyType type)
+{
+    // Static loot tables — defined once, referenced by all enemies of that type.
+
+    static const LootTable goblinLoot = {
+        10, 5, // 10 ± 5 coins
+        {
+            {CraftingSystem::MAT_BONE, "Bone", 1, 2, 0.6f},
+            {CraftingSystem::MAT_LEATHER, "Leather", 1, 1, 0.3f},
+        }};
+    static const LootTable skeletonLoot = {
+        15, 5, {
+                   {CraftingSystem::MAT_BONE, "Bone", 2, 3, 0.8f},
+                   {CraftingSystem::MAT_IRON_ORE, "Iron Ore", 1, 1, 0.2f},
+               }};
+    static const LootTable orcLoot = {
+        25, 8, {
+                   {CraftingSystem::MAT_IRON_ORE, "Iron Ore", 1, 2, 0.5f},
+                   {CraftingSystem::MAT_LEATHER, "Leather", 1, 2, 0.4f},
+                   {CraftingSystem::MAT_MAGIC_CRYSTAL, "Magic Crystal", 1, 1, 0.1f},
+               }};
+    static const LootTable dragonLoot = {
+        200, 50, {
+                     {CraftingSystem::MAT_DRAGON_SCALE, "Dragon Scale", 2, 4, 0.9f},
+                     {CraftingSystem::MAT_MAGIC_CRYSTAL, "Magic Crystal", 1, 2, 0.6f},
+                     {CraftingSystem::MAT_IRON_ORE, "Iron Ore", 3, 5, 0.8f},
+                 }};
+
+    switch (type)
+    {
+    case EnemyType::Goblin:
+        return goblinLoot;
+    case EnemyType::Skeleton:
+        return skeletonLoot;
+    case EnemyType::Orc:
+        return orcLoot;
+    case EnemyType::Dragon:
+        return dragonLoot;
+    default:
+        return goblinLoot;
+    }
 }
 
 // ==============================================================================

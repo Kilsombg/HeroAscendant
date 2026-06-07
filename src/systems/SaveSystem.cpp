@@ -106,16 +106,23 @@ void SaveSystem::SnapshotInventory(GameSave &save,
     save.materials.clear();
     save.items.clear();
 
-    // Materials are not directly iterable from outside Inventory.
-    // Inventory would need a GetAllMaterials() accessor for full save support.
-    // For now we save equipped gear — a minimal but working save.
-    // TODO: Add Inventory::GetAllMaterials() when implementing full save UI.
+    // Save ALL materials — previously only equipped gear was saved.
+    // Materials are stackable resources used for crafting.
+    // Without saving them, the player loses all gathered materials on quit.
+    for (const auto &[id, stack] : inventory.GetAllMaterials())
+    {
+        SavedMaterial sm;
+        sm.id = id;
+        sm.name = stack.name;
+        sm.quantity = stack.quantity;
+        save.materials.push_back(sm);
+    }
 
+    // Save equipped gear (unchanged from before)
     auto saveSlot = [&](ItemSlot slot, uint32_t &outId)
     {
         const Item *item = inventory.GetEquippedItem(slot);
         outId = item ? item->id : 0;
-
         if (item)
         {
             SavedItem si;
@@ -146,29 +153,27 @@ void SaveSystem::SnapshotInventory(GameSave &save,
 void SaveSystem::RestoreHeroStats(const GameSave &save,
                                   StatsComponent &stats) const
 {
-    // StatsComponent needs SetLevel/SetXP setters for full restore.
-    // Currently StatsComponent advances via AddXP() — we add enough XP
-    // to reach the saved level as a simple restore mechanism.
-    // TODO: Add direct setters to StatsComponent for clean save restore.
-    stats.AddCoins(save.heroCoins);
-
-    // Restore stat upgrade levels by calling upgrade the right number of times.
-    // SpendCoins is bypassed here — we're restoring, not charging.
-    // This is a limitation; a cleaner approach uses direct setters.
-    // Acceptable for the current scope.
-    for (int i = 0; i < save.strengthLevel; ++i)
-        stats.UpgradeStrength();
-    for (int i = 0; i < save.defenseLevel; ++i)
-        stats.UpgradeDefense();
-    for (int i = 0; i < save.agilityLevel; ++i)
-        stats.UpgradeAgility();
-    for (int i = 0; i < save.hpLevel; ++i)
-        stats.UpgradeHP();
+    // Use direct setters — no events fired, no coins spent.
+    // Previously this looped calling UpgradeStrength() etc., which
+    // fired CoinSpent and StatUpgraded events for every upgrade on load.
+    // This was wrong: events should only fire when the player takes an action,
+    // not when we're restoring saved state.
+    stats.SetCoins(save.heroCoins);
+    stats.SetLevel(save.heroLevel);
+    stats.SetXP(save.heroXP, save.heroXPToNext);
+    stats.SetStrengthLevel(save.strengthLevel);
+    stats.SetDefenseLevel(save.defenseLevel);
+    stats.SetAgilityLevel(save.agilityLevel);
+    stats.SetHPLevel(save.hpLevel);
 }
 
 void SaveSystem::RestoreInventory(const GameSave &save,
                                   Inventory &inventory) const
 {
+
+    for (const auto &sm : save.materials)
+        inventory.AddMaterial(sm.id, sm.name, sm.quantity);
+
     for (const auto &si : save.items)
     {
         Item item;
@@ -228,6 +233,13 @@ std::string SaveSystem::Serialise(const GameSave &save) const
         WriteLine(out, "itemData", line);
     }
 
+    // Materials — format: mat|id|name|quantity
+    for (const auto &mat : save.materials)
+    {
+        std::string line = "mat|" + std::to_string(mat.id) + "|" + mat.name + "|" + std::to_string(mat.quantity);
+        WriteLine(out, "matData", line);
+    }
+
     return out;
 }
 
@@ -262,6 +274,27 @@ bool SaveSystem::Deserialise(const std::string &text, GameSave &s) const
     std::string line;
     while (std::getline(stream, line))
     {
+        // materials
+        if (line.rfind("matData=", 0) == 0)
+        {
+            std::string data = line.substr(8);
+            std::istringstream ss(data);
+            std::string token;
+            std::vector<std::string> parts;
+            while (std::getline(ss, token, '|'))
+                parts.push_back(token);
+
+            if (parts.size() >= 4) // "mat", id, name, quantity
+            {
+                SavedMaterial sm;
+                sm.id = static_cast<uint32_t>(std::stoul(parts[1]));
+                sm.name = parts[2];
+                sm.quantity = std::stoi(parts[3]);
+                s.materials.push_back(sm);
+            }
+        }
+
+        // items
         if (line.rfind("itemData=", 0) != 0)
             continue;
 

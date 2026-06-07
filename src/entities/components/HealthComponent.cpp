@@ -31,8 +31,8 @@ void HealthComponent::TakeDamage(int amount, bool isCritical)
             // Without this, a HeroDied listener could push DeathState
             // while HeroTookDamage listeners are still iterating.
             m_eventBus.FireDeferred(EventType::HeroDied, HeroDiedEvent{
-                                                             0, // floorIndex — filled in by BattleState listener
-                                                             0  // stageIndex — filled in by BattleState listener
+                                                             m_floorIndex, // floorIndex
+                                                             m_stageIndex  // stageIndex
                                                          });
             m_owner->MarkDead();
         }
@@ -61,7 +61,7 @@ void HealthComponent::TakeDamage(int amount, bool isCritical)
             m_eventBus.FireDeferred(EventType::EnemyDied, EnemyDiedEvent{
                                                               m_owner->GetId(), // enemyId
                                                               0,                // coinsDropped — set by CombatSystem/LootSystem
-                                                              0,                // floorIndex   — set by BattleState
+                                                              m_floorIndex,     // floorIndex
                                                               posX,             // posX
                                                               posY              // posY
                                                           });

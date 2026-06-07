@@ -8,6 +8,7 @@
 // Forward declarations
 class Engine;
 class Texture;
+class AssetManager;
 
 // ==============================================================================
 // Color — simple RGBA color value.
@@ -49,7 +50,7 @@ public:
 
     // Takes the engine's SDL_Renderer pointer. Renderer doesn't own it —
     // Engine creates and destroys it. Renderer just uses it.
-    void Init(SDL_Renderer *sdlRenderer);
+    void Init(SDL_Renderer *sdlRenderer, AssetManager *assets = nullptr);
 
     // ==== Frame lifecycle ====
 
@@ -95,6 +96,22 @@ public:
                   int x, int y,
                   Color color);
 
+    // MeasureText — returns the rendered pixel size of `text` in `font`
+    // without drawing anything.
+    //
+    // Uses TTF_SizeText internally. Returns {0, 0} if font is null or text
+    // is empty so callers never need to guard against a null font themselves.
+    //
+    // SDL_ttf API note:
+    //   TTF_SizeText(font, text, &w, &h) fills w and h with the width and
+    //   height in pixels that TTF_RenderText_* would produce. It does NOT
+    //   allocate a surface — it is a pure measurement call, very cheap.
+    //
+    // Usage:
+    //   auto [tw, th] = m_renderer.MeasureText(font, "PAUSED");
+    //   int centredX  = panelX + (panelW - tw) / 2;
+    SDL_Point MeasureText(TTF_Font *font, const std::string &text) const;
+
     // ==== Utility ====
 
     // SetAlpha — sets global draw alpha for subsequent DrawTexture calls.
@@ -107,6 +124,7 @@ public:
 
 private:
     SDL_Renderer *m_sdlRenderer = nullptr;
+    AssetManager *m_assets = nullptr;
 
     // Converts our Color struct to SDL_Color for SDL2 API calls
     SDL_Color ToSDLColor(Color c) const;

@@ -7,6 +7,7 @@
 #include "components/RenderComponent.h"
 #include "components/StatsComponent.h"
 #include "components/AIComponent.h"
+#include "components/EnemyTypeComponent.h"
 
 #include "../events/EventBus.h"
 #include "../renderer/Renderer.h"
@@ -15,6 +16,30 @@
 #include <memory>
 #include <vector>
 #include <cstdint>
+
+enum class EnemyType
+{
+    Goblin,
+    Skeleton,
+    Orc,
+    Dragon, // Boss
+};
+
+struct LootEntry
+{
+    uint32_t materialId;
+    std::string materialName;
+    int minQuantity;
+    int maxQuantity;
+    float dropChance; // 0.0 to 1.0
+};
+
+struct LootTable
+{
+    int baseCoins;    // Flat coin reward per kill
+    int coinVariance; // +/- variance on coin reward
+    std::vector<LootEntry> materials;
+};
 
 // ==============================================================================
 // EntityManager
@@ -34,14 +59,6 @@
 //   This prevents iterator invalidation mid-frame.
 //
 // ==============================================================================
-
-enum class EnemyType
-{
-    Goblin,
-    Skeleton,
-    Orc,
-    Dragon, // Boss
-};
 
 class EntityManager
 {
@@ -102,6 +119,11 @@ public:
     // GetEnemyCount — how many enemies are alive right now
     int GetLivingEnemyCount() const;
 
+    // Returns the loot table for a given enemy type
+    static const LootTable &GetLootTable(EnemyType type);
+
+    void SetBattleContext(int stageIndex) { m_stageIndex = stageIndex; }
+
     // -----------------------------------------------------------------------
     // Cleanup
     // -----------------------------------------------------------------------
@@ -118,6 +140,8 @@ private:
 
     // Hero ID cached for fast GetHero() lookup
     uint32_t m_heroId = 0;
+
+    int m_stageIndex = 0;
 
     // -----------------------------------------------------------------------
     // Internal helpers
