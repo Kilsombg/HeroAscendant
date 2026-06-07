@@ -58,6 +58,20 @@ void UIRenderer::DrawHealthBar(int x, int y, int w, int h,
     m_renderer.DrawText(font, hpText, hpTextX, hpTextY, Color::White);
 }
 
+void UIRenderer::DrawHeroHealthBar(int current, int max)
+{
+    DrawHealthBar(HERO_HP_BAR_X, HERO_HP_BAR_Y,
+                  HERO_HP_BAR_W, HERO_HP_BAR_H,
+                  current, max, "HERO", /*isHero=*/true);
+}
+
+void UIRenderer::DrawEnemyHealthBar(int current, int max, const std::string &name)
+{
+    DrawHealthBar(ENEMY_HP_BAR_X, ENEMY_HP_BAR_Y,
+                  ENEMY_HP_BAR_W, ENEMY_HP_BAR_H,
+                  current, max, name, /*isHero=*/false);
+}
+
 // ==============================================================================
 // Buttons
 // ==============================================================================
@@ -158,25 +172,22 @@ SDL_Point UIRenderer::MeasureText(const std::string &text, bool large) const
 
 void UIRenderer::DrawFloorIndicator(int currentFloor, int totalFloors)
 {
-    // "Floor 2 / 4" centered at top
+    // Centred at the top of the screen, between the two HP bars.
+    // In landscape the centre is x=960.
     std::string text = "Floor " + std::to_string(currentFloor + 1) + " / " + std::to_string(totalFloors);
-    DrawLabel(text, SCREEN_W / 2, 45, Color::White, false);
+    DrawLabel(text, SCREEN_W / 2, 28, Color::White, false);
 }
 
 void UIRenderer::DrawCoinCount(int coins)
 {
     SDL_Texture *icon = m_assets.GetTexture("coin_icon");
-    int iconSize = 48;
+    int iconSize = 40;
     std::string text = std::to_string(coins);
 
-    // Measure the number string so we can position icon + text as a unit
-    // centred on SCREEN_W / 2.
     auto [tw, th] = MeasureText(text);
-
-    // Total width of the icon+gap+text block
     int blockW = icon ? (iconSize + 8 + tw) : tw;
     int blockX = SCREEN_W / 2 - blockW / 2;
-    int baseY = SCREEN_H - 80;
+    int baseY = SCREEN_H - 60; // landscape: near the bottom centre
 
     if (icon)
     {
@@ -200,58 +211,56 @@ void UIRenderer::DrawCoinCount(int coins)
 
 void UIRenderer::DrawPauseOverlay()
 {
-    // Semi-transparent dark backdrop
     m_renderer.DrawRect(0, 0, SCREEN_W, SCREEN_H,
                         Color{0, 0, 0, 160}, true);
 
-    // Title
-    DrawLabel("PAUSED", SCREEN_W / 2, 700, Color::White, true);
+    // Centre of screen in landscape
+    DrawLabel("PAUSED", SCREEN_W / 2, 260, Color::White, /*large=*/true);
 
-    // Buttons — centered
-    int btnW = 400, btnH = 100;
+    int btnW = 400, btnH = 90;
     int btnX = (SCREEN_W - btnW) / 2;
 
-    DrawButton(btnX, 900, btnW, btnH, "RESUME",
+    DrawButton(btnX, 420, btnW, btnH, "RESUME",
                Color{50, 120, 50, 230});
-    DrawButton(btnX, 1040, btnW, btnH, "QUIT TO MENU",
+    DrawButton(btnX, 540, btnW, btnH, "QUIT TO MENU",
                Color{120, 50, 50, 230});
 }
 
 void UIRenderer::DrawDeathOverlay()
 {
-    // Dark red backdrop
     m_renderer.DrawRect(0, 0, SCREEN_W, SCREEN_H,
                         Color{80, 0, 0, 180}, true);
 
-    DrawLabel("YOU DIED", SCREEN_W / 2, 700,
-              Color{220, 50, 50, 255}, true);
+    DrawLabel("YOU DIED", SCREEN_W / 2, 260,
+              Color{220, 50, 50, 255}, /*large=*/true);
 
-    int btnW = 400, btnH = 100;
+    int btnW = 400, btnH = 90;
     int btnX = (SCREEN_W - btnW) / 2;
 
-    DrawButton(btnX, 920, btnW, btnH, "RESURRECT",
-               Color{180, 140, 20, 230}); // Gold
-    DrawButton(btnX, 1060, btnW, btnH, "QUIT TO MENU",
+    DrawButton(btnX, 420, btnW, btnH, "RESURRECT",
+               Color{180, 140, 20, 230});
+    DrawButton(btnX, 540, btnW, btnH, "QUIT TO MENU",
                Color{80, 80, 80, 230});
 }
 
+// src/ui/UIRenderer.cpp — replace DrawVictoryOverlay:
+
 void UIRenderer::DrawVictoryOverlay(int coinsEarned)
 {
-    // Gold tint backdrop
     m_renderer.DrawRect(0, 0, SCREEN_W, SCREEN_H,
                         Color{80, 60, 0, 160}, true);
 
-    DrawLabel("STAGE CLEAR!", SCREEN_W / 2, 650,
-              Color{255, 215, 0, 255}, true);
+    DrawLabel("STAGE CLEAR!", SCREEN_W / 2, 240,
+              Color{255, 215, 0, 255}, /*large=*/true);
 
     std::string reward = "+" + std::to_string(coinsEarned) + " coins";
-    DrawLabel(reward, SCREEN_W / 2, 800,
+    DrawLabel(reward, SCREEN_W / 2, 380,
               Color{255, 215, 0, 255}, false);
 
-    int btnW = 400, btnH = 100;
+    int btnW = 400, btnH = 90;
     int btnX = (SCREEN_W - btnW) / 2;
 
-    DrawButton(btnX, 1000, btnW, btnH, "CONTINUE",
+    DrawButton(btnX, 500, btnW, btnH, "CONTINUE",
                Color{50, 120, 50, 230});
 }
 
@@ -261,10 +270,10 @@ void UIRenderer::DrawVictoryOverlay(int coinsEarned)
 
 void UIRenderer::DrawPotionSlots(int slotCount, int maxSlots)
 {
-    // Bottom-left — square slots
-    int slotSize = 90;
+    // Bottom-left in landscape
+    int slotSize = 80;
     int startX = 20;
-    int startY = SCREEN_H - slotSize - 20;
+    int startY = SCREEN_H - slotSize - 20; // 980
     int gap = 10;
 
     for (int i = 0; i < maxSlots; ++i)
@@ -273,12 +282,12 @@ void UIRenderer::DrawPotionSlots(int slotCount, int maxSlots)
         bool hasPotion = (i < slotCount);
 
         Color bg = hasPotion
-                       ? Color{60, 120, 60, 220} // Green — has potion
-                       : Color{40, 40, 40, 180}; // Dark — empty slot
+                       ? Color{60, 120, 60, 220}
+                       : Color{40, 40, 40, 180};
 
         m_renderer.DrawRect(slotX, startY, slotSize, slotSize, bg, true);
         m_renderer.DrawRect(slotX, startY, slotSize, slotSize,
-                            Color{100, 100, 100, 255}, false); // Border
+                            Color{100, 100, 100, 255}, false);
 
         if (hasPotion)
         {
@@ -293,8 +302,6 @@ void UIRenderer::DrawPotionSlots(int slotCount, int maxSlots)
             }
             else
             {
-                // Fallback letter until the sprite asset exists.
-                // Centred properly now using MeasureText.
                 const std::string fallback = "P";
                 auto [fw, fh] = MeasureText(fallback);
                 m_renderer.DrawText(GetFont(), fallback,
@@ -312,11 +319,14 @@ void UIRenderer::DrawPotionSlots(int slotCount, int maxSlots)
 
 void UIRenderer::DrawStageProgress(int currentFloor, int totalFloors)
 {
-    // Thin bar just below the HP bars
-    int barX = 20, barY = 100;
-    int segW = (SCREEN_W - 40) / totalFloors;
-    int segH = 12;
+    // Thin bar just below the two HP bars, spanning the full width
+    // but inset from the edges so it doesn't collide with the bars.
+    int barX = 20;
+    int barY = HERO_HP_BAR_Y + HERO_HP_BAR_H + 8; // 78
+    int barW = SCREEN_W - 40;                     // 1880
+    int segH = 10;
     int gap = 4;
+    int segW = (barW - gap * (totalFloors - 1)) / totalFloors;
 
     for (int i = 0; i < totalFloors; ++i)
     {
@@ -328,15 +338,15 @@ void UIRenderer::DrawStageProgress(int currentFloor, int totalFloors)
 
         Color c;
         if (isBoss && isCleared)
-            c = Color{180, 50, 50, 255}; // Boss cleared
+            c = Color{180, 50, 50, 255};
         else if (isBoss)
-            c = Color{120, 20, 20, 200}; // Boss ahead
+            c = Color{120, 20, 20, 200};
         else if (isCleared)
-            c = Color{50, 180, 50, 255}; // Floor cleared
+            c = Color{50, 180, 50, 255};
         else if (isCurrent)
-            c = Color{50, 120, 200, 255}; // Current floor
+            c = Color{50, 120, 200, 255};
         else
-            c = Color{60, 60, 60, 200}; // Upcoming
+            c = Color{60, 60, 60, 200};
 
         m_renderer.DrawRect(x, barY, segW, segH, c, true);
     }

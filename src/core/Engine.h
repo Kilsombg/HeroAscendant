@@ -36,8 +36,8 @@ public:
     //   On Android, the real screen might be 1440x3200 or 720x1560.
     //   SDL_RenderSetLogicalSize() maps your virtual resolution to whatever
     //   the real screen is. You never think about real pixels in game code.
-    static constexpr int VIRTUAL_WIDTH = 1080;
-    static constexpr int VIRTUAL_HEIGHT = 1920;
+    static constexpr int VIRTUAL_WIDTH = 1920;
+    static constexpr int VIRTUAL_HEIGHT = 1080;
 
     // Target frames per second. SDL_RENDERER_PRESENTVSYNC handles this
     // automatically when the monitor runs at 60hz, but we store it for

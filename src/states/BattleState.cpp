@@ -61,7 +61,8 @@ void BattleState::OnEnter()
     m_movingRight = true;
 
     // Spawn hero at starting edge for floor 0
-    m_heroId = m_entityManager->CreateHero(HeroStartX(), 928.0f);
+    m_heroId = m_entityManager->CreateHero(HeroStartX(), 480.0f);
+    //  480 = 1080/2 - half a typical sprite height (64/2 = 32) ≈ centre of screen
 
     SpawnFloor();
 }
@@ -174,13 +175,10 @@ void BattleState::Render()
     {
         auto *health = hero->GetComponent<HealthComponent>();
         if (health)
-            m_ctx.uiRenderer.DrawHealthBar(
-                20, 40, 400, 40,
-                health->GetCurrentHP(), health->GetMaxHP(),
-                "HERO", true);
+            m_ctx.uiRenderer.DrawHeroHealthBar(
+                health->GetCurrentHP(), health->GetMaxHP());
     }
 
-    // Enemy HP bar — show the current target's health
     if (m_currentTargetId != 0 && m_entityManager)
     {
         Entity *target = m_entityManager->GetEntityById(m_currentTargetId);
@@ -188,10 +186,9 @@ void BattleState::Render()
         {
             auto *health = target->GetComponent<HealthComponent>();
             if (health)
-                m_ctx.uiRenderer.DrawHealthBar(
-                    660, 40, 400, 40,
+                m_ctx.uiRenderer.DrawEnemyHealthBar(
                     health->GetCurrentHP(), health->GetMaxHP(),
-                    target->GetName(), false);
+                    target->GetName());
         }
     }
 
@@ -392,9 +389,10 @@ void BattleState::SpawnFloor()
         std::cout << "[BattleState] Spawning boss floor.\n";
 
         // Boss spawns on the far side of the direction hero is travelling
-        float bossX = m_movingRight ? 900.0f : 180.0f;
+        float bossX = m_movingRight ? 1700.0f : 220.0f;
         uint32_t bossId = m_entityManager->CreateEnemy(
-            EnemyType::Dragon, bossX, 896.0f, m_floorIndex);
+            EnemyType::Dragon, bossX, 440.0f, m_floorIndex);
+        //  440 = (1080 - 128boss_height) / 2 — centres the 128px tall boss sprite
 
         // Boss faces hero
         Entity *boss = m_entityManager->GetEntityById(bossId);
@@ -428,7 +426,7 @@ void BattleState::SpawnFloor()
                 type = EnemyType::Orc; // Harder enemies later
 
             uint32_t enemyId = m_entityManager->CreateEnemy(
-                type, enemyX, 928.0f, m_floorIndex);
+                type, enemyX, 480.0f, m_floorIndex);
 
             // Set facing direction: enemies face the hero (opposite to movement dir)
             Entity *enemy = m_entityManager->GetEntityById(enemyId);
@@ -501,26 +499,29 @@ void BattleState::AdvanceFloor()
 
 float BattleState::HeroStartX() const
 {
-    // Hero spawns just inside the edge they'll be walking from
-    return m_movingRight ? 60.0f   // Left edge, moving right
-                         : 956.0f; // Right edge, moving left (1080 - heroWidth)
+    // Landscape: hero enters from the left edge (moving right)
+    // or from the right edge (moving left).
+    return m_movingRight ? 60.0f            // left edge, hero faces right
+                         : 1860.0f - 64.0f; // right edge minus hero sprite width
 }
 
 float BattleState::EnemyStartX(int index, int total) const
 {
     (void)total;
-    float spacing = 140.0f;
+    // In landscape we have 1920px of width — enemies spread across
+    // the far two-thirds of the screen in the direction of travel.
+    // Spacing is wider so enemies don't bunch up in the extra space.
+    float spacing = 180.0f;
+
     if (m_movingRight)
     {
-        // Hero walks right — enemies are on the right side
-        // First enemy closest to hero at x=700, next at x=840 etc.
-        return 700.0f + (index * spacing);
+        // Hero walks right — enemies start from x≈1100 and spread right
+        return 1100.0f + (index * spacing);
     }
     else
     {
-        // Hero walks left — enemies are on the left side
-        // First enemy at x=380, next at x=240 etc.
-        return 380.0f - (index * spacing);
+        // Hero walks left — enemies start from x≈820 and spread left
+        return 820.0f - (index * spacing);
     }
 }
 

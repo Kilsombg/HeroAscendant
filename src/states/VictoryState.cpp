@@ -39,8 +39,8 @@ void VictoryState::HandleInput(const SDL_Event &event)
 
         if (event.type == SDL_FINGERDOWN)
         {
-            tapX = static_cast<int>(event.tfinger.x * 1080);
-            tapY = static_cast<int>(event.tfinger.y * 1920);
+            tapX = static_cast<int>(event.tfinger.x * 1920);
+            tapY = static_cast<int>(event.tfinger.y * 1080);
             isTap = true;
         }
         else if (event.type == SDL_MOUSEBUTTONDOWN &&
@@ -54,13 +54,10 @@ void VictoryState::HandleInput(const SDL_Event &event)
         if (!isTap)
             return;
 
-        int btnW = 400, btnH = 100;
-        int btnX = (1080 - btnW) / 2;
+        int btnW = 400, btnH = 90;
+        int btnX = (1920 - btnW) / 2;
 
-        if (UIRenderer::HitTest(tapX, tapY, btnX, 900, btnW, btnH))
-            m_ctx.stateManager.Pop();
-
-        if (UIRenderer::HitTest(tapX, tapY, btnX, 1040, btnW, btnH))
+        if (UIRenderer::HitTest(tapX, tapY, btnX, 500, btnW, btnH))
             m_ctx.stateManager.PopAll(std::make_unique<MainMenuState>(m_ctx));
     }
 }

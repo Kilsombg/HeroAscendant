@@ -17,7 +17,7 @@ int Game::Run()
     // --- Initialize ---
     // Window starts at a sensible desktop size. On Android SDL2 ignores
     // these and uses the device's full screen resolution instead.
-    if (!m_engine.Init("Hero Ascendant", 540, 960))
+    if (!m_engine.Init("Hero Ascendant", 1280, 720))
     {
         std::cerr << "[Game] Engine initialization failed.\n";
         return 1;

@@ -47,6 +47,14 @@ public:
                        const std::string &label,
                        bool isHero = true);
 
+    // DrawHeroHealthBar — draws the hero HP bar at its fixed HUD position.
+    // BattleState calls this without knowing the coordinates.
+    void DrawHeroHealthBar(int current, int max);
+
+    // DrawEnemyHealthBar — draws the current enemy HP bar at its fixed HUD position.
+    // name = the enemy's display name shown as the bar label.
+    void DrawEnemyHealthBar(int current, int max, const std::string &name);
+
     // -----------------------------------------------------------------------
     // Buttons
     // -----------------------------------------------------------------------
@@ -140,26 +148,29 @@ private:
     AssetManager &m_assets;
 
     // Virtual screen dimensions — everything relative to these
-    static constexpr int SCREEN_W = 1080;
-    static constexpr int SCREEN_H = 1920;
+    static constexpr int SCREEN_W = 1920;
+    static constexpr int SCREEN_H = 1080;
 
-    // Layout constants — positions for recurring UI elements
+    // --- Hero HP bar --- top-left
     static constexpr int HERO_HP_BAR_X = 20;
-    static constexpr int HERO_HP_BAR_Y = 40;
-    static constexpr int HERO_HP_BAR_W = 400;
-    static constexpr int HERO_HP_BAR_H = 40;
+    static constexpr int HERO_HP_BAR_Y = 20;
+    static constexpr int HERO_HP_BAR_W = 500;
+    static constexpr int HERO_HP_BAR_H = 50;
 
-    static constexpr int ENEMY_HP_BAR_X = 660;
-    static constexpr int ENEMY_HP_BAR_Y = 40;
-    static constexpr int ENEMY_HP_BAR_W = 400;
-    static constexpr int ENEMY_HP_BAR_H = 40;
+    // --- Enemy HP bar --- top-right, mirrored
+    static constexpr int ENEMY_HP_BAR_X = SCREEN_W - 520; // 1400
+    static constexpr int ENEMY_HP_BAR_Y = 20;
+    static constexpr int ENEMY_HP_BAR_W = 500;
+    static constexpr int ENEMY_HP_BAR_H = 50;
 
-    static constexpr int ATTACK_BTN_X = 810;
-    static constexpr int ATTACK_BTN_Y = 1700;
+    // --- Attack button --- bottom-right
+    static constexpr int ATTACK_BTN_X = SCREEN_W - 260; // 1660
+    static constexpr int ATTACK_BTN_Y = SCREEN_H - 180; // 900
     static constexpr int ATTACK_BTN_W = 240;
     static constexpr int ATTACK_BTN_H = 160;
 
-    static constexpr int PAUSE_BTN_X = 990;
+    // --- Pause button --- top-right corner
+    static constexpr int PAUSE_BTN_X = SCREEN_W - 90; // 1830
     static constexpr int PAUSE_BTN_Y = 20;
     static constexpr int PAUSE_BTN_W = 70;
     static constexpr int PAUSE_BTN_H = 70;
