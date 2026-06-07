@@ -4,6 +4,7 @@
 #include "../events/GameEvents.h"
 #include "../events/EventBus.h"
 #include "../entities/EntityManager.h"
+#include "../ui/DamageNumberSystem.h"
 
 enum class HeroMoveState
 {
@@ -34,7 +35,6 @@ enum class HeroMoveState
 class BattleState : public IGameState
 {
 public:
-    // stageId identifies which stage's floors/enemies to load
     BattleState(StateContext ctx, int stageId);
 
     void OnEnter() override;
@@ -57,18 +57,12 @@ private:
     // EntityManager lives here — created in OnEnter, destroyed in OnExit
     std::unique_ptr<EntityManager> m_entityManager;
 
-    // Cached hero ID for fast lookup each frame
     uint32_t m_heroId = 0;
     HeroMoveState m_heroMoveState = HeroMoveState::Moving;
     uint32_t m_currentTargetId = 0; // Entity ID of enemy hero is walking toward
 
     // Hero movement speed in virtual pixels per second
     static constexpr float HERO_MOVE_SPEED = 220.0f;
-
-    // Floor management
-    void SpawnFloor();      // Spawns enemies for m_floorIndex
-    void AdvanceFloor();    // Move to next floor or spawn boss
-    void CheckFloorClear(); // Called after each enemy death
 
     // Floor direction — true = hero moves left→right on this floor
     // Flips on every AdvanceFloor()
@@ -78,17 +72,20 @@ private:
     float m_floorClearTimer = 0.0f;
     static constexpr float FLOOR_CLEAR_DELAY = 0.6f; // seconds
 
-    // Event listener IDs — stored so we can unsubscribe in OnExit()
+    // Event listener IDs
     ListenerID m_enemyDiedListenerId = 0;
     ListenerID m_heroDiedListenerId = 0;
     ListenerID m_bossDiedListenerId = 0;
 
-    // Private helpers
-    void OnEnemyDied(const EnemyDiedEvent &data);
-    void OnHeroDied(const HeroDiedEvent &data);
-    void OnBossDied(const BossDiedEvent &data);
+    // Damage number visual effect system — owned by BattleState
+    std::unique_ptr<DamageNumberSystem> m_damageNumbers;
 
-    void HandleAttackInput(); // Called on click/tap
+    // -----------------------------------------------------------------------
+    // Floor management
+    // -----------------------------------------------------------------------
+    void SpawnFloor();
+    void AdvanceFloor();
+    void CheckFloorClear();
 
     // -----------------------------------------------------------------------
     // Combat / movement update
@@ -102,6 +99,11 @@ private:
     Entity *FindNextTarget() const;
 
     // -----------------------------------------------------------------------
+    // Input
+    // -----------------------------------------------------------------------
+    void HandleAttackInput();
+
+    // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
 
@@ -111,4 +113,11 @@ private:
 
     // Flip enemy render component to face the correct direction
     void SetEnemyFacing(Entity *enemy) const;
+
+    // -----------------------------------------------------------------------
+    // Event callbacks
+    // -----------------------------------------------------------------------
+    void OnEnemyDied(const EnemyDiedEvent &data);
+    void OnHeroDied(const HeroDiedEvent &data);
+    void OnBossDied(const BossDiedEvent &data);
 };

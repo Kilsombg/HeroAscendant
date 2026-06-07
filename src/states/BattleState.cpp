@@ -13,6 +13,7 @@
 #include "../entities/components/RenderComponent.h"
 #include "../entities/components/StatsComponent.h"
 #include "../renderer/Renderer.h"
+#include "../ui/UIRenderer.h"
 
 #include <iostream>
 #include <cstdlib>
@@ -117,6 +118,9 @@ void BattleState::Update(float deltaTime)
     m_entityManager->Update(deltaTime);
     UpdateCombat(deltaTime);
     m_entityManager->RemoveDeadEntities();
+
+    if (m_damageNumbers)
+        m_damageNumbers->Update(deltaTime);
 }
 
 void BattleState::Render()
@@ -126,7 +130,7 @@ void BattleState::Render()
     if (m_entityManager)
         m_entityManager->Render(m_ctx.renderer);
 
-    // TODO Layer 6 (UI): HP bars, floor counter, attack button
+    // TODO: HP bars, floor counter, attack button
 }
 
 // ==============================================================================

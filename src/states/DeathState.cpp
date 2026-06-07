@@ -3,6 +3,7 @@
 #include "MainMenuState.h"
 
 #include "../renderer/Renderer.h"
+#include "../ui/UIRenderer.h"
 
 #include <iostream>
 
@@ -30,7 +31,6 @@ void DeathState::HandleInput(const SDL_Event &event)
         {
         case SDLK_r:
             // Resurrect — pop death screen, BattleState resumes
-            std::cout << "[DeathState] Resurrecting.\n";
             m_ctx.stateManager.Pop();
             break;
 
@@ -44,6 +44,28 @@ void DeathState::HandleInput(const SDL_Event &event)
             break;
         }
     }
+
+    // Touch/mouse — Resurrect button: y=920-1020, Quit button: y=1060-1160
+    if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_FINGERDOWN)
+    {
+        int tapX, tapY;
+        if (event.type == SDL_FINGERDOWN)
+        {
+            tapX = static_cast<int>(event.tfinger.x * 1080);
+            tapY = static_cast<int>(event.tfinger.y * 1920);
+        }
+        else
+        {
+            tapX = event.button.x;
+            tapY = event.button.y;
+        }
+
+        if (tapX >= 340 && tapX <= 740 && tapY >= 920 && tapY <= 1020)
+            m_ctx.stateManager.Pop();
+
+        if (tapX >= 340 && tapX <= 740 && tapY >= 1060 && tapY <= 1160)
+            m_ctx.stateManager.PopAll(std::make_unique<MainMenuState>(m_ctx));
+    }
 }
 
 void DeathState::Update(float deltaTime)
@@ -53,6 +75,5 @@ void DeathState::Update(float deltaTime)
 
 void DeathState::Render()
 {
-    // Dark red semi-transparent overlay over the frozen battle
-    m_ctx.renderer.DrawRect(0, 0, 1080, 1920, Color{60, 0, 0, 200}, true);
+    m_ctx.uiRenderer.DrawDeathOverlay();
 }

@@ -10,6 +10,7 @@
 #include "../systems/CraftingSystem.h"
 #include "../systems/QuestSystem.h"
 #include "../systems/SaveSystem.h"
+#include "../ui/UIRenderer.h"
 
 // ==============================================================================
 // Game — owns the main loop and all top-level systems.
@@ -47,15 +48,20 @@ private:
     GameStateManager m_stateManager;
 
     // Progression systems
+
     Inventory m_inventory;
     CraftingSystem m_craftingSystem;
     QuestSystem m_questSystem;
     SaveSystem m_saveSystem;
 
+    // UI
+    UIRenderer m_uiRenderer;
+
     bool m_running = false;
     Uint32 m_lastTick = 0;
 
     // Loop steps — called every frame
+
     void HandleEvents();
     void Update(float deltaTime);
     void Render();

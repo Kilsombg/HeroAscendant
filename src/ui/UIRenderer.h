@@ -1,0 +1,154 @@
+#pragma once
+
+#include "../renderer/Renderer.h"
+#include "../core/AssetManager.h"
+
+#include <string>
+
+// ==============================================================================
+// UIRenderer — Facade Pattern (Structural)
+//
+// Draws all HUD and menu elements. States call this instead of calling
+// Renderer directly — UIRenderer handles the layout maths, colors, and
+// SDL calls internally.
+//
+// Why a separate class from Renderer?
+//   Renderer draws raw primitives (textures, rects, text).
+//   UIRenderer draws game-specific widgets (HP bars, buttons, labels)
+//   built from those primitives. Two levels of abstraction:
+//
+//   BattleState → UIRenderer::DrawHeroHP(currentHP, maxHP)
+//               → Renderer::DrawRect (background bar)
+//               → Renderer::DrawRect (filled portion)
+//               → Renderer::DrawText (HP numbers)
+//
+// Virtual resolution:
+//   All coordinates are in virtual 1080x1920 space.
+//   SDL_RenderSetLogicalSize (set in Engine) scales to real screen.
+//
+// ==============================================================================
+class UIRenderer
+{
+public:
+    UIRenderer(Renderer &renderer, AssetManager &assets);
+
+    // -----------------------------------------------------------------------
+    // Health bars
+    // -----------------------------------------------------------------------
+
+    // DrawHealthBar — draws a labeled HP bar.
+    // x, y = top-left corner of the bar
+    // w, h = bar dimensions
+    // current, max = HP values (used to calculate fill percentage)
+    // label = text shown above or beside the bar (e.g. "HERO", "GOBLIN")
+    // isHero = true = green bar, false = red bar (enemy)
+    void DrawHealthBar(int x, int y, int w, int h,
+                       int current, int max,
+                       const std::string &label,
+                       bool isHero = true);
+
+    // -----------------------------------------------------------------------
+    // Buttons
+    // -----------------------------------------------------------------------
+
+    // DrawButton — draws a tappable button rectangle with centered label.
+    // Returns true if the button was pressed this frame.
+    // (For now just draws — input is still handled in state HandleInput.
+    //  Full hit-test integration comes with the input refactor.)
+    void DrawButton(int x, int y, int w, int h,
+                    const std::string &label,
+                    Color bgColor = Color{60, 60, 120, 220},
+                    Color labelColor = Color::White);
+
+    // DrawAttackButton — large bottom-right attack button
+    // highlighted = true when hero is in combat range (pulses slightly)
+    void DrawAttackButton(bool highlighted);
+
+    // DrawPauseButton — small top-right corner button
+    void DrawPauseButton();
+
+    // -----------------------------------------------------------------------
+    // Labels and text
+    // -----------------------------------------------------------------------
+
+    // DrawLabel — centered text at a position
+    void DrawLabel(const std::string &text,
+                   int centerX, int y,
+                   Color color = Color::White,
+                   bool large = false);
+
+    // DrawFloorIndicator — "Floor 2 / 4" shown at top center in battle
+    void DrawFloorIndicator(int currentFloor, int totalFloors);
+
+    // DrawCoinCount — shows current coin total
+    void DrawCoinCount(int coins);
+
+    // -----------------------------------------------------------------------
+    // Overlays — full-screen semi-transparent panels
+    // -----------------------------------------------------------------------
+
+    // DrawPauseOverlay — dark overlay with PAUSED title and buttons
+    void DrawPauseOverlay();
+
+    // DrawDeathOverlay — dark red overlay with death message and choices
+    // Returns: 0=nothing, 1=Resurrect tapped, 2=Quit tapped
+    // (Tapping detection uses last mouse/finger position — basic for now)
+    void DrawDeathOverlay();
+
+    // DrawVictoryOverlay — golden overlay with stage clear and reward
+    void DrawVictoryOverlay(int coinsEarned);
+
+    // -----------------------------------------------------------------------
+    // Potion slots
+    // -----------------------------------------------------------------------
+
+    // DrawPotionSlots — draws up to 3 potion slot icons at bottom-left
+    // slotCount = how many slots have a potion equipped
+    void DrawPotionSlots(int slotCount, int maxSlots = 3);
+
+    // -----------------------------------------------------------------------
+    // Stage progress bar
+    // -----------------------------------------------------------------------
+
+    // DrawStageProgress — thin bar at top showing floor progress
+    // e.g. 3 segments for 3 normal floors + 1 boss
+    void DrawStageProgress(int currentFloor, int totalFloors);
+
+private:
+    Renderer &m_renderer;
+    AssetManager &m_assets;
+
+    // Virtual screen dimensions — everything relative to these
+    static constexpr int SCREEN_W = 1080;
+    static constexpr int SCREEN_H = 1920;
+
+    // Layout constants — positions for recurring UI elements
+    static constexpr int HERO_HP_BAR_X = 20;
+    static constexpr int HERO_HP_BAR_Y = 40;
+    static constexpr int HERO_HP_BAR_W = 400;
+    static constexpr int HERO_HP_BAR_H = 40;
+
+    static constexpr int ENEMY_HP_BAR_X = 660;
+    static constexpr int ENEMY_HP_BAR_Y = 40;
+    static constexpr int ENEMY_HP_BAR_W = 400;
+    static constexpr int ENEMY_HP_BAR_H = 40;
+
+    static constexpr int ATTACK_BTN_X = 810;
+    static constexpr int ATTACK_BTN_Y = 1700;
+    static constexpr int ATTACK_BTN_W = 240;
+    static constexpr int ATTACK_BTN_H = 160;
+
+    static constexpr int PAUSE_BTN_X = 990;
+    static constexpr int PAUSE_BTN_Y = 20;
+    static constexpr int PAUSE_BTN_W = 70;
+    static constexpr int PAUSE_BTN_H = 70;
+
+    // Helper — draws a filled bar with a background
+    void DrawBar(int x, int y, int w, int h,
+                 float fillPct,
+                 Color fillColor,
+                 Color bgColor = Color{40, 40, 40, 200});
+
+    // Helper — gets the font for UI text (loaded in AssetManager)
+    TTF_Font *GetFont(bool large = false) const;
+};

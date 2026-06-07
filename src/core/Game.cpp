@@ -4,7 +4,7 @@
 #include <iostream>
 
 Game::Game()
-    : m_craftingSystem(m_eventBus), m_questSystem(m_eventBus)
+    : m_craftingSystem(m_eventBus), m_questSystem(m_eventBus), m_uiRenderer(m_renderer, m_assets)
 {
 }
 
@@ -17,7 +17,7 @@ int Game::Run()
     // these and uses the device's full screen resolution instead.
     if (!m_engine.Init("Hero Ascendant", 540, 960))
     {
-        std::cerr << "[Game] Engine initialization failed. Exiting.\n";
+        std::cerr << "[Game] Engine initialization failed.\n";
         return 1;
     }
 
@@ -53,7 +53,6 @@ int Game::Run()
         }
 
         float dt = CalculateDeltaTime();
-
         HandleEvents();
         Update(dt);
         Render();
@@ -65,20 +64,24 @@ int Game::Run()
     ShutdownSystems();
     m_assets.Shutdown();
     m_engine.Shutdown();
-
     return 0;
 }
 
-// ==============================================================================
-// Startup / shutdown helpers
-// ==============================================================================
-
 void Game::InitSystems()
 {
-    // CraftingSystem registers all recipes
-    m_craftingSystem.InitRecipes();
+    // Load fonts — UIRenderer::GetFont() returns nullptr until these are loaded.
+    // Font file must exist at assets/fonts/pixel_font.ttf
+    // If not found, text won't draw but game won't crash.
+    TTF_Font *small = m_assets.LoadFont("ui_small", "AvelineEleganzaRegular.otf", 30);
+    TTF_Font *large = m_assets.LoadFont("ui_large", "AvelineEleganzaRegular.otf", 52);
 
-    // QuestSystem subscribes to EventBus and registers quests
+    if (!small || !large)
+        std::cerr << "[Game] WARNING: Font failed to load. "
+                  << "Check assets/fonts/pixel_font.ttf exists next to the .exe\n";
+    else
+        std::cout << "[Game] Fonts loaded successfully.\n";
+
+    m_craftingSystem.InitRecipes();
     m_questSystem.Init();
 
     std::cout << "[Game] All systems initialized.\n";
@@ -86,7 +89,6 @@ void Game::InitSystems()
 
 void Game::ShutdownSystems()
 {
-    // QuestSystem unsubscribes its EventBus listeners
     m_questSystem.Shutdown();
 }
 
@@ -94,36 +96,20 @@ void Game::LoadOrStartNewGame()
 {
     GameSave save;
     if (m_saveSystem.Load(save))
-    {
-        // Restore state from save file.
-        // Hero entity doesn't exist yet — stats are stored in the save
-        // and applied to the hero entity when MainMenuState creates it.
         std::cout << "[Game] Save loaded — hero level " << save.heroLevel << ".\n";
-    }
     else
-    {
-        std::cout << "[Game] No save found: starting new game.\n";
-    }
+        std::cout << "[Game] No save found — starting new game.\n";
 }
-
-// ==============================================================================
-// Per-frame
-// ==============================================================================
 
 void Game::HandleEvents()
 {
     SDL_Event event;
 
-    // SDL_PollEvent returns 1 while there are events in the queue.
-    // We process ALL pending events before moving on to Update.
-    // If we only processed one event per frame, input would feel delayed.
     while (SDL_PollEvent(&event))
     {
         switch (event.type)
         {
         case SDL_QUIT:
-            // SDL_QUIT is fired when the user closes the window,
-            // or on Android when the OS is terminating the app.
             m_running = false;
             break;
 
@@ -132,12 +118,7 @@ void Game::HandleEvents()
                 m_running = false;
             break;
 
-        // Cross-platform note:
-        //   SDL_APP_WILLENTERBACKGROUND fires on Android when the user
-        //   switches to another app. We should pause music here.
-        //   This doesn't exist on Windows (will be ignored).
         case SDL_APP_WILLENTERBACKGROUND:
-            // Fire through EventBus so any system can react to app pause
             m_eventBus.Fire(EventType::AppPaused, AppPausedEvent{});
             m_audio.PauseMusic();
             break;
@@ -151,39 +132,21 @@ void Game::HandleEvents()
             break;
         }
 
-        // Forward every event to the active state AFTER global handling.
-        // State gets the event even if we handled it above — states may
-        // also want to react to SDL_QUIT (e.g. auto-save before exit).
         m_stateManager.HandleInput(event);
     }
 }
 
 void Game::Update(float deltaTime)
 {
-    // 1. Apply any Push/Pop/Replace operations queued last frame
     m_stateManager.ApplyPendingChanges();
-
-    // 2. Dispatch deferred events at the START of each frame,
-    // before any system runs its Update(). This ensures events
-    // fired last frame are delivered before new logic executes.
     m_eventBus.Dispatch();
-
-    // 3. Update quest system (checks daily/weekly reset timestamps)
     m_questSystem.Update();
-
-    // 3. Update the active state
     m_stateManager.Update(deltaTime);
 }
 
 void Game::Render()
 {
-    // 1. Clear the screen
-    m_renderer.Clear(Color{10, 10, 40, 255}); // Dark blue background
-
-    // 2. GameStateManager renders bottom-to-top respecting IsTransparent()
     m_stateManager.Render();
-
-    // 3. Present (swap buffers)
     m_renderer.Present();
 }
 
@@ -213,8 +176,6 @@ float Game::CalculateDeltaTime()
 
 StateContext Game::MakeContext()
 {
-    // Bundle references to all systems a state might need.
-    // Passing references (not pointers) means states can't store nullptr.
     return StateContext{
         m_renderer,
         m_assets,
@@ -224,5 +185,6 @@ StateContext Game::MakeContext()
         m_inventory,
         m_craftingSystem,
         m_questSystem,
-        m_saveSystem};
+        m_saveSystem,
+        m_uiRenderer};
 }

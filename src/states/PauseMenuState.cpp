@@ -3,6 +3,7 @@
 #include "MainMenuState.h"
 
 #include "../renderer/Renderer.h"
+#include "../ui/UIRenderer.h"
 
 #include <iostream>
 
@@ -43,17 +44,41 @@ void PauseMenuState::HandleInput(const SDL_Event &event)
             break;
         }
     }
+
+    // Touch/mouse — check against button regions
+    // Resume button: center x=540, y=900, w=400, h=100
+    // Quit button:   center x=540, y=1040, w=400, h=100
+    if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_FINGERDOWN)
+    {
+        int tapX, tapY;
+        if (event.type == SDL_FINGERDOWN)
+        {
+            tapX = static_cast<int>(event.tfinger.x * 1080);
+            tapY = static_cast<int>(event.tfinger.y * 1920);
+        }
+        else
+        {
+            tapX = event.button.x;
+            tapY = event.button.y;
+        }
+
+        // Resume button region
+        if (tapX >= 340 && tapX <= 740 && tapY >= 900 && tapY <= 1000)
+            m_ctx.stateManager.Pop();
+
+        // Quit button region
+        if (tapX >= 340 && tapX <= 740 && tapY >= 1040 && tapY <= 1140)
+            m_ctx.stateManager.PopAll(std::make_unique<MainMenuState>(m_ctx));
+    }
 }
 
 void PauseMenuState::Update(float deltaTime)
 {
     (void)deltaTime;
-    // Pause menu has no logic to update
 }
 
 void PauseMenuState::Render()
 {
-    // Draw a semi-transparent dark overlay over the battle.
-    m_ctx.renderer.SetDrawAlpha(180); // ~70% opaque dark overlay
-    m_ctx.renderer.DrawRect(0, 0, 1080, 1920, Color{0, 0, 0, 180}, true);
+    // BattleState renders first (IsTransparent=true), then we draw overlay
+    m_ctx.uiRenderer.DrawPauseOverlay();
 }

@@ -62,6 +62,7 @@ void Renderer::DrawTexture(SDL_Texture *texture,
     if (!texture)
         return;
 
+    // SDL_Rect is a simple struct: { int x, y, w, h }
     // dstRect tells SDL2 WHERE and HOW BIG to draw the texture on screen.
     SDL_Rect dstRect = {x, y, w, h};
 
@@ -92,6 +93,11 @@ void Renderer::DrawTextureRegion(SDL_Texture *texture,
         return;
 
     // srcRect defines WHICH PART of the texture to draw.
+    // This is how sprite sheet animation works:
+    //   Frame 0: srcRect = {0,   0, 32, 32}
+    //   Frame 1: srcRect = {32,  0, 32, 32}
+    //   Frame 2: srcRect = {64,  0, 32, 32}
+    // Each call draws a different frame from the same texture.
     SDL_Rect srcRect = {srcX, srcY, srcW, srcH};
     SDL_Rect dstRect = {dstX, dstY, dstW, dstH};
 
@@ -103,6 +109,14 @@ void Renderer::DrawTextureRegion(SDL_Texture *texture,
 
 void Renderer::DrawRect(int x, int y, int w, int h, Color color, bool filled)
 {
+    // SDL_BLENDMODE_BLEND must be set for any alpha < 255 to actually blend.
+    // Without this, SDL2 ignores the alpha channel and draws fully opaque.
+    // SDL_BLENDMODE_NONE is faster when alpha=255, so we switch per call.
+    if (color.a < 255)
+        SDL_SetRenderDrawBlendMode(m_sdlRenderer, SDL_BLENDMODE_BLEND);
+    else
+        SDL_SetRenderDrawBlendMode(m_sdlRenderer, SDL_BLENDMODE_NONE);
+
     SDL_SetRenderDrawColor(m_sdlRenderer, color.r, color.g, color.b, color.a);
 
     SDL_Rect rect = {x, y, w, h};
@@ -110,11 +124,13 @@ void Renderer::DrawRect(int x, int y, int w, int h, Color color, bool filled)
     if (filled)
     {
         // SDL_RenderFillRect fills the rectangle with the draw color.
+        // Used for: health bars, UI panels, debug overlays.
         SDL_RenderFillRect(m_sdlRenderer, &rect);
     }
     else
     {
         // SDL_RenderDrawRect draws only the outline (4 lines).
+        // Used for: selection borders, debug bounding boxes.
         SDL_RenderDrawRect(m_sdlRenderer, &rect);
     }
 }
